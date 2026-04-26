@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"errors"
 )
 
 type ParcelStore struct {
@@ -39,23 +38,13 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 	// реализуйте чтение строки по заданному number
 	// здесь из таблицы должна вернуться только одна строка
 
-	rows, err := s.db.Query("SELECT number, client, status, address, created_at FROM parcel WHERE number = :number",
-		sql.Named("number", number))
-
-	if err != nil {
-		return Parcel{}, err
-	}
-
-	defer rows.Close()
-
-	if !rows.Next() {
-		return Parcel{}, errors.New("Empty rows")
-	}
-
 	// заполните объект Parcel данными из таблицы
 	p := Parcel{}
 
-	err = rows.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
+	row := s.db.QueryRow("SELECT number, client, status, address, created_at FROM parcel WHERE number = :number",
+		sql.Named("number", number))
+
+	err := row.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 
 	if err != nil {
 		return Parcel{}, err
@@ -74,7 +63,7 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 	var res []Parcel
 
 	if err != nil {
-		return res, err
+		return nil, err
 	}
 
 	defer rows.Close()
@@ -90,6 +79,10 @@ func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
 		}
 
 		res = append(res, p)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return res, nil

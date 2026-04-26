@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -37,6 +36,8 @@ func TestAddGetDelete(t *testing.T) {
 
 	require.NoError(t, err)
 
+	defer db.Close()
+
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
@@ -47,11 +48,14 @@ func TestAddGetDelete(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, id)
 
+	parcel.Number = id
+
 	// get
 	// получите только что добавленную посылку, убедитесь в отсутствии ошибки
 	// проверьте, что значения всех полей в полученном объекте совпадают со значениями полей в переменной parcel
 	p, err := store.Get(id)
 	require.NoError(t, err)
+	assert.Equal(t, parcel.Number, p.Number)
 	assert.Equal(t, parcel.Address, p.Address)
 	assert.Equal(t, parcel.Client, p.Client)
 	assert.Equal(t, parcel.CreatedAt, p.CreatedAt)
@@ -73,6 +77,8 @@ func TestSetAddress(t *testing.T) {
 	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 
 	require.NoError(t, err)
+
+	defer db.Close()
 
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
@@ -104,6 +110,8 @@ func TestSetStatus(t *testing.T) {
 
 	require.NoError(t, err)
 
+	defer db.Close()
+
 	store := NewParcelStore(db)
 	parcel := getTestParcel()
 
@@ -131,6 +139,8 @@ func TestGetByClient(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db") // настройте подключение к БД
 	require.NoError(t, err)
+
+	defer db.Close()
 
 	store := NewParcelStore(db)
 
@@ -166,7 +176,7 @@ func TestGetByClient(t *testing.T) {
 	// убедитесь, что количество полученных посылок совпадает с количеством добавленных
 	storedParcels, err := store.GetByClient(client)
 	require.NoError(t, err)
-	assert.Equal(t, len(parcels), len(storedParcels))
+	assert.Len(t, storedParcels, len(parcels))
 
 	// check
 	for _, parcel := range storedParcels {
@@ -176,15 +186,8 @@ func TestGetByClient(t *testing.T) {
 
 		p, ok := parcelMap[parcel.Number]
 		assert.True(t, ok)
-		if !ok {
-			continue
-		}
 
-		assert.Equal(t, p.Client, parcel.Client)
-		assert.Equal(t, p.Status, parcel.Status)
-		assert.Equal(t, p.Address, parcel.Address)
-		assert.Equal(t, p.CreatedAt, parcel.CreatedAt)
+		assert.Equal(t, p, parcel)
 
-		fmt.Print(parcel)
 	}
 }
